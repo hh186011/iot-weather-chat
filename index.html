@@ -775,7 +775,7 @@ ${JSON.stringify(data.slice(0, 50), null, 2)}
 
 Responde en español de forma clara y concisa. Si hay datos numéricos, calcula estadísticas relevantes directamente de los datos proporcionados. Incluye valores específicos con unidades (°C, %, hPa). Sé directo y útil. Si la pregunta requiere análisis estadístico, calcula tú mismo los valores a partir de los datos JSON proporcionados.`;
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
