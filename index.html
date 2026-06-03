@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estación Meteorológica IoT — Consultas</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --surface: #0d1318;
+    --surface2: #111820;
+    --border: #1e2d3d;
+    --accent: #00e5ff;
+    --accent2: #00ff9d;
+    --accent3: #ff6b35;
+    --text: #c8d8e8;
+    --text-dim: #4a6478;
+    --text-bright: #e8f4ff;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glow orbs */
+  body::after {
+    content: '';
+    position: fixed;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(0,229,255,0.04) 0%, transparent 70%);
+    top: -200px;
+    right: -200px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-left { flex: 1; }
+
+  .header-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .header-tag::before {
+    content: '';
+    width: 20px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-family: var(--sans);
+    font-size: clamp(24px, 4vw, 38px);
+    font-weight: 800;
+    color: var(--text-bright);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  h1 span {
+    color: var(--accent);
+  }
+
+  .subtitle {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  /* Status indicators */
+  .status-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 8px var(--accent2);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .status-dot.warning { background: var(--accent3); box-shadow: 0 0 8px var(--accent3); }
+  .status-dot.off { background: var(--text-dim); box-shadow: none; animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Live metrics bar */
+  .metrics-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .metric-card:hover { border-color: rgba(0,229,255,0.3); }
+  .metric-card:hover::before { opacity: 1; }
+
+  .metric-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .metric-value {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-bright);
+    line-height: 1;
+  }
+
+  .metric-unit {
+    font-size: 11px;
+    color: var(--accent);
+    margin-left: 4px;
+  }
+
+  .metric-time {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+
+  /* API Key config */
+  .config-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .config-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  .config-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .config-input:focus { border-color: var(--accent); }
+  .config-input::placeholder { color: var(--text-dim); }
+
+  .config-save {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 8px 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .config-save:hover { background: rgba(0,229,255,0.1); }
+
+  /* Chat area */
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+    min-height: 300px;
+  }
+
+  .message {
+    display: flex;
+    gap: 16px;
+    animation: fadeInUp 0.3s ease;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user { flex-direction: row-reverse; }
+
+  .msg-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    letter-spacing: 0.05em;
+  }
+
+  .msg-avatar.system {
+    background: linear-gradient(135deg, rgba(0,229,255,0.2), rgba(0,255,157,0.1));
+    border: 1px solid rgba(0,229,255,0.3);
+    color: var(--accent);
+  }
+
+  .msg-avatar.user {
+    background: linear-gradient(135deg, rgba(255,107,53,0.2), rgba(255,107,53,0.05));
+    border: 1px solid rgba(255,107,53,0.3);
+    color: var(--accent3);
+  }
+
+  .msg-content {
+    flex: 1;
+    max-width: calc(100% - 48px);
+  }
+
+  .msg-bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .message.user .msg-bubble {
+    background: var(--surface2);
+    border-color: rgba(255,107,53,0.2);
+    color: var(--text-bright);
+  }
+
+  .msg-time {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    padding: 0 4px;
+  }
+
+  .message.user .msg-time { text-align: right; }
+
+  /* SQL block inside messages */
+  .sql-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  /* Data table inside messages */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .data-table th {
+    background: var(--bg);
+    color: var(--accent);
+    padding: 6px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.05em;
+    font-size: 10px;
+  }
+
+  .data-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(30,45,61,0.5);
+    color: var(--text);
+  }
+
+  .data-table tr:last-child td { border-bottom: none; }
+
+  /* Typing indicator */
+  .typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: fit-content;
+  }
+
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: typing 1.4s ease-in-out infinite;
+  }
+
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* Suggested questions */
+  .suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .suggestion-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 12px;
+    font-family: var(--mono);
+    font-size: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.03em;
+    text-align: left;
+  }
+
+  .suggestion-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,229,255,0.05);
+  }
+
+  /* Input area */
+  .input-area {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 4px 4px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: border-color 0.2s;
+  }
+
+  .input-area:focus-within { border-color: rgba(0,229,255,0.4); }
+
+  .chat-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--text-bright);
+    padding: 10px 0;
+  }
+
+  .chat-input::placeholder { color: var(--text-dim); }
+
+  .send-btn {
+    background: var(--accent);
+    border: none;
+    color: var(--bg);
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .send-btn:hover { background: #33eaff; transform: scale(1.05); }
+  .send-btn:disabled { background: var(--border); color: var(--text-dim); transform: none; cursor: not-allowed; }
+
+  .send-btn svg { width: 16px; height: 16px; }
+
+  /* Footer */
+  footer {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-info {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .footer-info span { color: var(--accent); }
+
+  /* Welcome message */
+  .welcome {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-dim);
+  }
+
+  .welcome-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+  }
+
+  .welcome h3 {
+    font-family: var(--sans);
+    font-size: 16px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .welcome p {
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.6;
+  }
+
+  /* Error state */
+  .error-msg {
+    background: rgba(255,107,53,0.1);
+    border: 1px solid rgba(255,107,53,0.3);
+    color: var(--accent3);
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-left">
+      <div class="header-tag">IoT Weather Station</div>
+      <h1>Consultas <span>Inteligentes</span></h1>
+      <p class="subtitle">ESP32S3-N16R8 · GY-BME280 · Supabase · Gemini AI</p>
+    </div>
+    <div class="status-panel">
+      <div class="status-item">
+        <div class="status-dot" id="db-dot"></div>
+        <span id="db-status">SUPABASE</span>
+      </div>
+      <div class="status-item">
+        <div class="status-dot off" id="ai-dot"></div>
+        <span id="ai-status">GEMINI AI</span>
+      </div>
+      <div class="status-item">
+        <div class="status-dot" id="sensor-dot"></div>
+        <span>ESP32S3_SENSOR_01</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Live metrics -->
+  <div class="metrics-bar">
+    <div class="metric-card">
+      <div class="metric-label">Temperatura</div>
+      <div class="metric-value" id="m-temp">--<span class="metric-unit">°C</span></div>
+      <div class="metric-time" id="m-time">cargando...</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Humedad</div>
+      <div class="metric-value" id="m-hum">--<span class="metric-unit">%H</span></div>
+      <div class="metric-time">última lectura</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Presión</div>
+      <div class="metric-value" id="m-pres">--<span class="metric-unit">hPa</span></div>
+      <div class="metric-time">nivel local</div>
+    </div>
+  </div>
+
+  <!-- API Key config -->
+  <div class="config-section">
+    <span class="config-label">GEMINI KEY</span>
+    <input type="password" class="config-input" id="gemini-key" placeholder="AIza... (obtener en aistudio.google.com)" />
+    <button class="config-save" onclick="saveKey()">GUARDAR</button>
+  </div>
+
+  <!-- Suggested questions -->
+  <div class="suggestions" id="suggestions">
+    <button class="suggestion-btn" onclick="askQuestion(this.textContent)">¿Temperatura promedio de hoy?</button>
+    <button class="suggestion-btn" onclick="askQuestion(this.textContent)">¿Cuál fue el momento más frío esta semana?</button>
+    <button class="suggestion-btn" onclick="askQuestion(this.textContent)">¿Humedad máxima y mínima de ayer?</button>
+    <button class="suggestion-btn" onclick="askQuestion(this.textContent)">¿Cuántos registros hay en total?</button>
+    <button class="suggestion-btn" onclick="askQuestion(this.textContent)">¿Tendencia de presión en las últimas 6 horas?</button>
+  </div>
+
+  <!-- Chat area -->
+  <div class="chat-area" id="chat-area">
+    <div class="welcome">
+      <div class="welcome-icon">🌤️</div>
+      <h3>Estación Meteorológica IoT</h3>
+      <p>Ingresa tu Gemini API Key y haz preguntas<br>en lenguaje natural sobre los datos del sensor.</p>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <input type="text" class="chat-input" id="chat-input" placeholder="Pregunta sobre los datos del sensor..." />
+    <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M22 2L11 13M22 2L15 22 11 13 2 9l20-7z"/>
+      </svg>
+    </button>
+  </div>
+
+  <footer>
+    <div class="footer-info">
+      DISPOSITIVO <span>ESP32S3_SENSOR_01</span> · PROYECTO MAESTRÍA TI
+    </div>
+    <div class="footer-info">
+      SUPABASE <span>us-east-1</span> · AWS <span>us-east-2</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://protvmewbgzaqryrtdur.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb3R2bWV3Ymd6YXFyeXJ0ZHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzAyMjQsImV4cCI6MjA5MzkwNjIyNH0.omqsI4C99f8iUykTyzEIm80a7yVreb077Rz3O0vbIEs';
+const DEVICE_ID = 'ESP32S3_SENSOR_01';
+
+let geminiKey = localStorage.getItem('gemini_key') || '';
+let isProcessing = false;
+
+// Schema info for Gemini
+const DB_SCHEMA = `
+Tabla: sensor_readings
+Columnas:
+- id: UUID (clave primaria)
+- device_id: VARCHAR(50) - siempre es 'ESP32S3_SENSOR_01'
+- temperature: FLOAT - temperatura en grados Celsius
+- humidity: FLOAT - humedad relativa en porcentaje
+- pressure: FLOAT - presión atmosférica en hPa
+- created_at: TIMESTAMPTZ - fecha y hora de la lectura
+
+La tabla tiene registros de una estación meteorológica IoT en Santiago, Chile.
+`;
+
+// Init
+window.onload = () => {
+  if (geminiKey) {
+    document.getElementById('gemini-key').value = geminiKey;
+    setAIStatus(true);
+    document.getElementById('send-btn').disabled = false;
+  }
+  loadMetrics();
+  setInterval(loadMetrics, 60000);
+
+  document.getElementById('chat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+
+  document.getElementById('gemini-key').addEventListener('input', e => {
+    const val = e.target.value.trim();
+    document.getElementById('send-btn').disabled = !val;
+  });
+};
+
+function saveKey() {
+  const val = document.getElementById('gemini-key').value.trim();
+  if (!val) return;
+  geminiKey = val;
+  localStorage.setItem('gemini_key', val);
+  setAIStatus(true);
+  document.getElementById('send-btn').disabled = false;
+  showToast('API Key guardada');
+}
+
+function setAIStatus(active) {
+  const dot = document.getElementById('ai-dot');
+  const txt = document.getElementById('ai-status');
+  dot.className = 'status-dot' + (active ? '' : ' off');
+  txt.textContent = active ? 'GEMINI ACTIVO' : 'GEMINI AI';
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:20px;right:20px;background:#0d1318;border:1px solid #00e5ff;color:#00e5ff;padding:10px 16px;border-radius:6px;font-family:'Space Mono',monospace;font-size:11px;z-index:999;animation:fadeInUp 0.3s ease`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+async function loadMetrics() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/sensor_readings?device_id=eq.${DEVICE_ID}&order=created_at.desc&limit=1`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const data = await res.json();
+    if (data && data.length > 0) {
+      const r = data[0];
+      document.getElementById('m-temp').innerHTML = `${r.temperature.toFixed(1)}<span class="metric-unit">°C</span>`;
+      document.getElementById('m-hum').innerHTML = `${r.humidity.toFixed(1)}<span class="metric-unit">%H</span>`;
+      document.getElementById('m-pres').innerHTML = `${r.pressure.toFixed(0)}<span class="metric-unit">hPa</span>`;
+      const d = new Date(r.created_at);
+      document.getElementById('m-time').textContent = d.toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'});
+      document.getElementById('sensor-dot').className = 'status-dot';
+    }
+  } catch(e) {
+    document.getElementById('sensor-dot').className = 'status-dot off';
+  }
+}
+
+async function querySupabase(sql) {
+  const encoded = encodeURIComponent(sql);
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/execute_query`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ query: sql })
+  });
+
+  // Fallback: usar endpoint REST directo
+  if (!res.ok) {
+    return await querySupabaseREST(sql);
+  }
+  return await res.json();
+}
+
+async function querySupabaseREST(sql) {
+  // Extraer parámetros de queries comunes via REST API
+  const lower = sql.toLowerCase();
+
+  if (lower.includes('avg') || lower.includes('max') || lower.includes('min') || lower.includes('count')) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/sensor_readings?device_id=eq.${DEVICE_ID}&select=temperature,humidity,pressure,created_at&order=created_at.desc&limit=1000`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    return await res.json();
+  }
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/sensor_readings?device_id=eq.${DEVICE_ID}&select=*&order=created_at.desc&limit=100`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+  return await res.json();
+}
+
+async function askGemini(userQuestion, data) {
+  const prompt = `Eres un asistente especializado en análisis de datos de una estación meteorológica IoT ubicada en Santiago, Chile.
+
+Schema de la base de datos:
+${DB_SCHEMA}
+
+El usuario preguntó: "${userQuestion}"
+
+Datos disponibles de la base de datos (últimos registros):
+${JSON.stringify(data.slice(0, 50), null, 2)}
+
+Responde en español de forma clara y concisa. Si hay datos numéricos, calcula estadísticas relevantes directamente de los datos proporcionados. Incluye valores específicos con unidades (°C, %, hPa). Sé directo y útil. Si la pregunta requiere análisis estadístico, calcula tú mismo los valores a partir de los datos JSON proporcionados.`;
+
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: 500 }
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || 'Error en Gemini API');
+  }
+
+  const result = await res.json();
+  return result.candidates[0].content.parts[0].text;
+}
+
+function addMessage(role, content, isHTML = false) {
+  const chatArea = document.getElementById('chat-area');
+
+  // Remove welcome if exists
+  const welcome = chatArea.querySelector('.welcome');
+  if (welcome) welcome.remove();
+
+  const msg = document.createElement('div');
+  msg.className = `message ${role}`;
+
+  const avatar = role === 'user' ? 'TÚ' : 'IOT';
+  const time = new Date().toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'});
+
+  msg.innerHTML = `
+    <div class="msg-avatar ${role === 'user' ? 'user' : 'system'}">${avatar}</div>
+    <div class="msg-content">
+      <div class="msg-bubble">${isHTML ? content : escapeHtml(content)}</div>
+      <div class="msg-time">${time}</div>
+    </div>
+  `;
+
+  chatArea.appendChild(msg);
+  chatArea.scrollTop = chatArea.scrollHeight;
+  return msg;
+}
+
+function escapeHtml(text) {
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function showTyping() {
+  const chatArea = document.getElementById('chat-area');
+  const typing = document.createElement('div');
+  typing.className = 'message';
+  typing.id = 'typing-msg';
+  typing.innerHTML = `
+    <div class="msg-avatar system">IOT</div>
+    <div class="msg-content">
+      <div class="typing-indicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    </div>
+  `;
+  chatArea.appendChild(typing);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function hideTyping() {
+  const t = document.getElementById('typing-msg');
+  if (t) t.remove();
+}
+
+function askQuestion(q) {
+  document.getElementById('chat-input').value = q;
+  sendMessage();
+}
+
+async function sendMessage() {
+  if (isProcessing) return;
+  const input = document.getElementById('chat-input');
+  const question = input.value.trim();
+  if (!question) return;
+
+  if (!geminiKey) {
+    showToast('Ingresa tu Gemini API Key primero');
+    return;
+  }
+
+  isProcessing = true;
+  input.value = '';
+  document.getElementById('send-btn').disabled = true;
+
+  addMessage('user', question);
+  showTyping();
+
+  try {
+    // Fetch data from Supabase
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/sensor_readings?device_id=eq.${DEVICE_ID}&select=temperature,humidity,pressure,created_at&order=created_at.desc&limit=500`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const data = await res.json();
+
+    // Ask Gemini
+    const answer = await askGemini(question, data);
+
+    hideTyping();
+    addMessage('system', answer);
+
+  } catch(err) {
+    hideTyping();
+    addMessage('system', `<div class="error-msg">⚠ Error: ${escapeHtml(err.message)}</div>`, true);
+  }
+
+  isProcessing = false;
+  document.getElementById('send-btn').disabled = false;
+  input.focus();
+}
+</script>
+</body>
+</html>
