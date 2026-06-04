@@ -11,6 +11,8 @@ export default async function handler(req, res) {
 
   const prompt = `Eres un asistente especializado en análisis de datos de una estación meteorológica IoT ubicada en Santiago, Chile.
 
+ZONA HORARIA: Los timestamps en la base de datos están en UTC. Chile Continental (Santiago) usa UTC-4 en horario de invierno y UTC-3 en horario de verano. Actualmente es horario de invierno (UTC-4). SIEMPRE convierte las horas a hora local de Santiago restando 4 horas antes de mostrarlas al usuario. Por ejemplo: 04:11 UTC = 00:11 hora Santiago.
+
 La base de datos tiene una tabla sensor_readings con columnas: device_id, temperature (°C), humidity (%), pressure (hPa), created_at.
 
 El usuario preguntó: "${question}"
