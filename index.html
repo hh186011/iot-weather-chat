@@ -728,7 +728,7 @@ async function askGroq(userQuestion, data) {
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question: userQuestion, data: data.slice(0, 50) })
+    body: JSON.stringify({ question: userQuestion, data: data.slice(0, 50), totalCount: parseInt(totalCount) })
   });
 
   if (!res.ok) {
@@ -816,6 +816,17 @@ async function sendMessage() {
     // Fetch data from Supabase
     const res = await fetch(`${SUPABASE_URL}/rest/v1/sensor_readings?device_id=eq.${DEVICE_ID}&select=temperature,humidity,pressure,created_at&order=created_at.desc&limit=500`, {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    // Fetch data and total count
+    const [dataRes, countRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/sensor_readings?device_id=eq.${DEVICE_ID}&select=temperature,humidity,pressure,created_at&order=created_at.desc&limit=500`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/sensor_readings?device_id=eq.${DEVICE_ID}&select=count`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'count=exact' }
+      })
+    ]);
+    const data = await dataRes.json();
+    const totalCount = countRes.headers.get('content-range')?.split('/')[1] || data.length;
     });
     const data = await res.json();
 
