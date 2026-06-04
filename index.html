@@ -557,7 +557,7 @@
     <div class="header-left">
       <div class="header-tag">IoT Weather Station</div>
       <h1>Consultas <span>Inteligentes</span></h1>
-      <p class="subtitle">ESP32S3-N16R8 · GY-BME280 · Supabase · Gemini AI</p>
+      <p class="subtitle">ESP32S3-N16R8 · GY-BME280 · Supabase · Groq LLaMA 3</p>
     </div>
     <div class="status-panel">
       <div class="status-item">
@@ -594,12 +594,7 @@
     </div>
   </div>
 
-  <!-- API Key config -->
-  <div class="config-section">
-    <span class="config-label">GEMINI KEY</span>
-    <input type="password" class="config-input" id="gemini-key" placeholder="AIza... (obtener en aistudio.google.com)" />
-    <button class="config-save" onclick="saveKey()">GUARDAR</button>
-  </div>
+
 
   <!-- Suggested questions -->
   <div class="suggestions" id="suggestions">
@@ -615,7 +610,7 @@
     <div class="welcome">
       <div class="welcome-icon">🌤️</div>
       <h3>Estación Meteorológica IoT</h3>
-      <p>Ingresa tu Gemini API Key y haz preguntas<br>en lenguaje natural sobre los datos del sensor.</p>
+      <p>Haz preguntas en lenguaje natural<br>sobre los datos de la estación meteorológica.</p>
     </div>
   </div>
 
@@ -644,58 +639,25 @@ const SUPABASE_URL = 'https://protvmewbgzaqryrtdur.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb3R2bWV3Ymd6YXFyeXJ0ZHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzAyMjQsImV4cCI6MjA5MzkwNjIyNH0.omqsI4C99f8iUykTyzEIm80a7yVreb077Rz3O0vbIEs';
 const DEVICE_ID = 'ESP32S3_SENSOR_01';
 
-let geminiKey = localStorage.getItem('gemini_key') || '';
 let isProcessing = false;
-
-// Schema info for Gemini
-const DB_SCHEMA = `
-Tabla: sensor_readings
-Columnas:
-- id: UUID (clave primaria)
-- device_id: VARCHAR(50) - siempre es 'ESP32S3_SENSOR_01'
-- temperature: FLOAT - temperatura en grados Celsius
-- humidity: FLOAT - humedad relativa en porcentaje
-- pressure: FLOAT - presión atmosférica en hPa
-- created_at: TIMESTAMPTZ - fecha y hora de la lectura
-
-La tabla tiene registros de una estación meteorológica IoT en Santiago, Chile.
-`;
 
 // Init
 window.onload = () => {
-  if (geminiKey) {
-    document.getElementById('gemini-key').value = geminiKey;
-    setAIStatus(true);
-    document.getElementById('send-btn').disabled = false;
-  }
+  setAIStatus(true);
+  document.getElementById('send-btn').disabled = false;
   loadMetrics();
   setInterval(loadMetrics, 60000);
 
   document.getElementById('chat-input').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   });
-
-  document.getElementById('gemini-key').addEventListener('input', e => {
-    const val = e.target.value.trim();
-    document.getElementById('send-btn').disabled = !val;
-  });
 };
-
-function saveKey() {
-  const val = document.getElementById('gemini-key').value.trim();
-  if (!val) return;
-  geminiKey = val;
-  localStorage.setItem('gemini_key', val);
-  setAIStatus(true);
-  document.getElementById('send-btn').disabled = false;
-  showToast('API Key guardada');
-}
 
 function setAIStatus(active) {
   const dot = document.getElementById('ai-dot');
   const txt = document.getElementById('ai-status');
   dot.className = 'status-dot' + (active ? '' : ' off');
-  txt.textContent = active ? 'GEMINI ACTIVO' : 'GEMINI AI';
+  txt.textContent = active ? 'GROQ ACTIVO' : 'GROQ AI';
 }
 
 function showToast(msg) {
@@ -762,35 +724,20 @@ async function querySupabaseREST(sql) {
   return await res.json();
 }
 
-async function askGemini(userQuestion, data) {
-  const prompt = `Eres un asistente especializado en análisis de datos de una estación meteorológica IoT ubicada en Santiago, Chile.
-
-Schema de la base de datos:
-${DB_SCHEMA}
-
-El usuario preguntó: "${userQuestion}"
-
-Datos disponibles de la base de datos (últimos registros):
-${JSON.stringify(data.slice(0, 50), null, 2)}
-
-Responde en español de forma clara y concisa. Si hay datos numéricos, calcula estadísticas relevantes directamente de los datos proporcionados. Incluye valores específicos con unidades (°C, %, hPa). Sé directo y útil. Si la pregunta requiere análisis estadístico, calcula tú mismo los valores a partir de los datos JSON proporcionados.`;
-
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`, {
+async function askGroq(userQuestion, data) {
+  const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 500 }
-    })
+    body: JSON.stringify({ question: userQuestion, data: data.slice(0, 50) })
   });
 
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(err.error?.message || 'Error en Gemini API');
+    throw new Error(err.error || 'Error en el servidor');
   }
 
   const result = await res.json();
-  return result.candidates[0].content.parts[0].text;
+  return result.answer;
 }
 
 function addMessage(role, content, isHTML = false) {
@@ -858,11 +805,6 @@ async function sendMessage() {
   const question = input.value.trim();
   if (!question) return;
 
-  if (!geminiKey) {
-    showToast('Ingresa tu Gemini API Key primero');
-    return;
-  }
-
   isProcessing = true;
   input.value = '';
   document.getElementById('send-btn').disabled = true;
@@ -877,8 +819,8 @@ async function sendMessage() {
     });
     const data = await res.json();
 
-    // Ask Gemini
-    const answer = await askGemini(question, data);
+    // Ask Groq
+    const answer = await askGroq(question, data);
 
     hideTyping();
     addMessage('system', answer);
