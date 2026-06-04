@@ -18,7 +18,7 @@ El usuario preguntó: "${question}"
 Datos de la base de datos (últimos registros):
 ${JSON.stringify(data.slice(0, 50), null, 2)}
 
-Responde en español de forma clara y concisa. Incluye valores específicos con unidades. Calcula estadísticas directamente de los datos proporcionados.`;
+IMPORTANTE: Responde SOLO con el resultado final. NO expliques el proceso, NO muestres cálculos intermedios, NO listes los datos uno por uno. Solo da la respuesta directa con el valor y una breve interpretación en máximo 3 líneas. Ejemplo correcto: "Temperatura promedio de hoy: 19.8°C (registradas 25 lecturas entre 00:00 y 04:11)". Ejemplo incorrecto: listar todos los valores uno por uno.`;
 
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
