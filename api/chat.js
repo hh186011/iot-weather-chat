@@ -40,6 +40,9 @@ La fecha y hora actual en UTC es: ${new Date().toISOString()}
 ## PREGUNTA DEL USUARIO
 ${question}
 
+## INFORMACIÓN ADICIONAL
+- Total de registros en la base de datos: ${totalCount || 'desconocido'}
+
 ## DATOS DISPONIBLES
 ${JSON.stringify(data.slice(0, 50), null, 2)}`;
 
