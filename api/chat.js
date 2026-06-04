@@ -38,7 +38,7 @@ export default async function handler(req, res) {
 La fecha y hora actual en UTC es: ${new Date().toISOString()}
 
 ## PREGUNTA DEL USUARIO
-${userQuestion}
+${question}
 
 ## DATOS DISPONIBLES
 ${JSON.stringify(data.slice(0, 50), null, 2)}`;
