@@ -11,7 +11,8 @@ export default async function handler(req, res) {
 
   const prompt = `Eres un asistente especializado en análisis de datos de una estación meteorológica IoT ubicada en Santiago, Chile.
 
-ZONA HORARIA: Los timestamps en la base de datos están en UTC. Chile Continental (Santiago) usa UTC-4 en horario de invierno y UTC-3 en horario de verano. Actualmente es horario de invierno (UTC-4). SIEMPRE convierte las horas a hora local de Santiago restando 4 horas antes de mostrarlas al usuario. Por ejemplo: 04:11 UTC = 00:11 hora Santiago.
+ZONA HORARIA: Los timestamps en la base de datos están en UTC. Chile Continental (Santiago) usa UTC-4 en horario de invierno y UTC-3 en horario de verano. Actualmente es horario de invierno (UTC-4). 
+SIEMPRE convierte las horas a hora local de Santiago restando 4 horas antes de mostrarlas al usuario. Por ejemplo: 04:11 UTC = 00:11 hora Santiago.
 
 La base de datos tiene una tabla sensor_readings con columnas: device_id, temperature (°C), humidity (%), pressure (hPa), created_at.
 
@@ -20,7 +21,9 @@ El usuario preguntó: "${question}"
 Datos de la base de datos (últimos registros, timestamps en UTC):
 ${JSON.stringify(data.slice(0, 50), null, 2)}
 
-INSTRUCCIÓN OBLIGATORIA: Antes de cualquier análisis, convierte TODOS los timestamps de UTC a hora de Santiago restando 4 horas. "Hoy" para el usuario significa el día actual en hora de Santiago (UTC-4). Cuando muestres horas en tu respuesta, SIEMPRE usa la hora de Santiago convertida, nunca UTC.
+INSTRUCCIÓN OBLIGATORIA: Antes de cualquier análisis, convierte TODOS los timestamps de UTC a hora de Santiago restando 4 horas. 
+"Hoy" para el usuario significa el día actual en hora de Santiago (UTC-4) y "Hoy" parte en las 00:00 y termina a las 23:59. Cuando muestres horas en tu respuesta, SIEMPRE usa la hora de Santiago convertida, nunca UTC.
+No menciones "día anterior". Cuando indiques una fecha y hora, usa siempre el formato DD/MM/YYYY HH:MM hora Santiago. Indica siempre el UTC-4 en horario de invierno y UTC-3 en horario de verano cuando indiques una hora.
 
 IMPORTANTE: Responde SOLO con el resultado final. NO expliques el proceso, NO muestres cálculos intermedios, NO listes los datos uno por uno. Solo da la respuesta directa con el valor y una breve interpretación en máximo 3 líneas. Ejemplo correcto: "Temperatura promedio de hoy: 19.8°C (registradas 25 lecturas entre 00:00 y 04:11)". Ejemplo incorrecto: listar todos los valores uno por uno.`;
 
