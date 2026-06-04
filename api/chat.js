@@ -41,10 +41,10 @@ La fecha y hora actual en UTC es: ${new Date().toISOString()}
 ${question}
 
 ## INFORMACIÓN ADICIONAL
-- Total de registros en la base de datos: ${totalCount || 'desconocido'}
+- Total de registros en la base de datos: ${req.body.totalCount || data.length}
 
-## DATOS DISPONIBLES
-${JSON.stringify(data.slice(0, 50), null, 2)}`;
+## DATOS DISPONIBLES (muestra de los últimos 50 registros)
+${JSON.stringify(data, null, 2)}`;
 
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
