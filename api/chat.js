@@ -17,8 +17,10 @@ La base de datos tiene una tabla sensor_readings con columnas: device_id, temper
 
 El usuario preguntó: "${question}"
 
-Datos de la base de datos (últimos registros):
+Datos de la base de datos (últimos registros, timestamps en UTC):
 ${JSON.stringify(data.slice(0, 50), null, 2)}
+
+INSTRUCCIÓN OBLIGATORIA: Antes de cualquier análisis, convierte TODOS los timestamps de UTC a hora de Santiago restando 4 horas. "Hoy" para el usuario significa el día actual en hora de Santiago (UTC-4). Cuando muestres horas en tu respuesta, SIEMPRE usa la hora de Santiago convertida, nunca UTC.
 
 IMPORTANTE: Responde SOLO con el resultado final. NO expliques el proceso, NO muestres cálculos intermedios, NO listes los datos uno por uno. Solo da la respuesta directa con el valor y una breve interpretación en máximo 3 líneas. Ejemplo correcto: "Temperatura promedio de hoy: 19.8°C (registradas 25 lecturas entre 00:00 y 04:11)". Ejemplo incorrecto: listar todos los valores uno por uno.`;
 
